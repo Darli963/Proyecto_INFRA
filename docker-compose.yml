@@ -1,0 +1,73 @@
+services:
+
+  mysql:
+    image: mysql:8
+    container_name: sistema_compras_mysql
+
+    restart: unless-stopped
+
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}  
+      MYSQL_DATABASE: ${MYSQL_DATABASE}            
+
+    ports:
+      - "3307:3306"
+
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./database:/docker-entrypoint-initdb.d
+
+    networks:
+      - app_network
+
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      retries: 5
+
+
+
+  backend:
+    build: ./backend 
+    container_name: sistema_compras_backend
+    restart: unless-stopped
+
+    environment:
+      MYSQL_HOST: mysql                     
+      MYSQL_USER: root
+      MYSQL_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      PORT: ${BACKEND_PORT}                  
+
+    depends_on:
+      mysql:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+
+    networks:
+      - app_network
+
+
+
+  frontend:
+    build: ./frontend
+    container_name: sistema_compras_frontend
+
+    restart: unless-stopped
+
+    depends_on:
+      - backend
+
+    ports:
+      - "8080:80"
+
+    networks:
+      - app_network
+
+volumes:
+  mysql_data:  
+
+networks:
+  app_network:
+    driver: bridge  
